@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="hi" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>YouTube AI Agent Pro</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#ff0033">
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Identity Services for YouTube OAuth 2.0 -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            ytDark: '#0f0f12',
+            ytCard: '#18181e',
+            ytBorder: '#282834',
+            ytRed: '#ff0033',
+            ytRedHover: '#cc0029'
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { background-color: #0f0f12; color: #f1f1f1; font-family: system-ui, -apple-system, sans-serif; }
+    input, textarea, select { background-color: #121217; border-color: #282834; color: #f1f1f1; }
+    input:focus, textarea:focus, select:focus { outline: none; border-color: #ff0033; ring: 1px solid #ff0033; }
+  </style>
+</head>
+<body class="min-h-screen pb-20 flex flex-col">
+
+  <!-- Header -->
+  <header class="bg-ytCard border-b border-ytBorder p-4 sticky top-0 z-50 flex justify-between items-center">
+    <div class="flex items-center space-x-2">
+      <div class="w-8 h-8 rounded bg-ytRed flex items-center justify-center font-bold text-white text-lg">▶</div>
+      <h1 class="text-lg font-bold tracking-tight">YouTube AI Agent Pro</h1>
+    </div>
+    <div class="flex items-center space-x-2">
+      <span id="activeProjectBadge" class="text-xs bg-ytBorder px-2.5 py-1 rounded-full text-zinc-300">No Project</span>
+    </div>
+  </header>
+
+  <!-- Main Tabs -->
+  <main class="flex-1 p-4 max-w-4xl mx-auto w-full">
+
+    <!-- 1. DASHBOARD -->
+    <section id="tab-dashboard" class="space-y-4">
+      <div class="bg-ytCard border border-ytBorder rounded-xl p-4">
+        <h2 class="text-lg font-semibold mb-1">Production Workspace</h2>
+        <p id="dashProjectTitle" class="text-zinc-400 text-sm">Koi project select nahi hai. Naya project banayein.</p>
+        <div id="dashProjectDetails" class="hidden mt-3 pt-3 border-t border-ytBorder text-xs text-zinc-300 space-y-1">
+          <p>Language: <span id="dashLang" class="text-white font-medium"></span> | Niche: <span id="dashNiche" class="text-white font-medium"></span></p>
+          <p>Privacy: <span class="text-ytRed font-bold">PRIVATE (Mandatory Default)</span></p>
+          <p>Status: <span id="dashApprovalStatus" class="font-semibold text-yellow-400">UNAPPROVED</span></p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <button onclick="switchTab('ai')" class="bg-ytCard border border-ytBorder hover:border-ytRed p-4 rounded-xl text-left">
+          <div class="text-ytRed text-xl mb-1">⚡</div>
+          <div class="font-semibold text-sm">AI Studio</div>
+          <div class="text-xs text-zinc-400">Hook, Script, Tags</div>
+        </button>
+        <button onclick="switchTab('research')" class="bg-ytCard border border-ytBorder hover:border-ytRed p-4 rounded-xl text-left">
+          <div class="text-blue-400 text-xl mb-1">🔍</div>
+          <div class="font-semibold text-sm">Research</div>
+          <div class="text-xs text-zinc-400">Fact check claims</div>
+        </button>
+        <button onclick="switchTab('media')" class="bg-ytCard border border-ytBorder hover:border-ytRed p-4 rounded-xl text-left">
+          <div class="text-green-400 text-xl mb-1">📁</div>
+          <div class="font-semibold text-sm">Media</div>
+          <div class="text-xs text-zinc-400">Attach MP4 & Thumb</div>
+        </button>
+        <button onclick="switchTab('approval')" class="bg-ytCard border border-ytRed/50 hover:border-ytRed p-4 rounded-xl text-left">
+          <div class="text-ytRed text-xl mb-1">🛡️</div>
+          <div class="font-semibold text-sm text-ytRed">Approval Gate</div>
+          <div class="text-xs text-zinc-400">Mandatory verification</div>
+        </button>
+      </div>
+
+      <div class="bg-ytCard border border-ytBorder rounded-xl p-4">
+        <div class="flex justify-between items-center mb-3">
+          <h3 class="font-semibold text-sm">Aapke Projects</h3>
+          <button onclick="switchTab('create')" class="text-xs bg-ytRed text-white px-3 py-1.5 rounded-lg">+ Naya Project</button>
+        </div>
+        <div id="projectList" class="space-y-2 text-sm text-zinc-400">
+          Projects load ho rahe hain...
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. CREATE PROJECT -->
+    <section id="tab-create" class="hidden space-y-4">
+      <div class="bg-ytCard border border-ytBorder rounded-xl p-4 space-y-3">
+        <h2 class="text-lg font-semibold">Naya Project Banayein</h2>
+        <div>
+          <label class="block text-xs text-zinc-400 mb-1">Title</label>
+          <input type="text" id="newTitle" class="w-full p-2.5 rounded-lg border text-sm" placeholder="e.g. Mystery of Ancient India">
+        </div>
+        <div>
+          <label class="block text-xs text-zinc-400 mb-1">Idea / Concept</label>
+          <textarea id="newIdea" rows="3" class="w-full p-2.5 rounded-lg border text-sm" placeholder="Video ka topic aur concept kya hai?"></textarea>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs text-zinc-400 mb-1">Niche</label>
+            <select id="newNiche" class="w-full p-2.5 rounded-lg border text-sm">
+              <option value="Technology">Technology</option>
+              <option value="History">History</option>
+              <option value="Mystery">Mystery</option>
+              <option value="Education">Education</option>
+              <option value="Gaming">Gaming</option>
+              <option value="Comedy">Comedy</option>
+              <option value="Music">Music</option>
+              <option value="Custom">Custom</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs text-zinc-400 mb-1">Language</label>
+            <select id="newLang" class="w-full p-2.5 rounded-lg border text-sm">
+              <option value="Hindi">Hindi</option>
+              <option value="Hinglish">Hinglish</option>
+              <option value="Bengali">Bengali</option>
+              <option value="English">English</option>
+            </select>
+          </div>
+        </div>
+        <button onclick="createNewProject()" class="w-full bg-ytRed hover:bg-ytRedHover text-white py-3 rounded-lg font-medium text-sm mt-2">
+          Project Create Karein
+        </button>
+      </div>
+    </section>
+
+    <!-- 3. AI STUDIO -->
+    <section id="tab-ai" class="hidden space-y-4">
+      <div class="bg-ytCard border border-ytBorder rounded-xl p-4 space-y-3">
+        <h2 class="text-lg font-semibold flex justify-between items-center">
+          <span>AI Content Studio</span>
+          <span class="text-xs text-zinc-400 font-normal">Gemini 1.5 Flash</span>
+        </h2>
+        <div id="aiStatusBox" class="hidden p-3 rounded-lg text-xs bg-zinc-800 border border-ytBorder"></div>
+        <div class="grid grid-cols-3 gap-2">
+          <button onclick="generateHook()" class="bg-zinc-800 border border-ytBorder hover:border-zinc-500 py-2 rounded text-xs font-medium">1. Hook</button>
+          <button onclick="generateScript()" class="bg-zinc-800 border border-ytBorder hover:border-zinc-500 py-2 rounded text-xs font-medium">2. Script (8m)</button>
+          <button onclick="generateMetadata()" class="bg-zinc-800 border border-ytBorder hover:border-zinc-500 py-2 rounded text-xs font-medium">3. SEO Tags</button>
+        </div>
+        <div>
+          <label class="block text-xs text-zinc-400 mb-1">Opening Hook (First 15s)</label>
+          <textarea id="aiHook" rows="3" class="w-full p-2.5 rounded-lg border text-sm"></textarea>
+        </div>
+        <div>
+          <div class="flex justify-between items-center mb-1">
+            <label class="block text-xs text-zinc-400">Narration Script</label>
+            <span id="scriptDurationEstimate" class="text-xs text-ytRed font-mono">0 words (~0 min)</span>
+          </div>
+          <textarea id="aiScript" rows="8" oninput="updateScriptWordCount()" class="w-full p-2.5 rounded-lg border text-sm font-mono text-xs"></textarea>
+          <p class="text-[11px] text-zinc-500 mt-1">*Duration estimate calculated at 140 words/min. Narration estimate only.</p>
+        </div>
+        <div>
+          <label class="block text-xs text-zinc-400 mb-1">YouTube Description</label>
+          <textarea id="aiDesc" rows="4" class="w-full p-2.5 rounded-lg border text-sm"></textarea>
+        </div>
+        <div>
+          <label class="block text-xs text-zinc-400 mb-1">Tags (Comma separated)</label>
+          <input type="text" id="aiTags" class="w-full p-2.5 rounded-lg border text-sm">
+        </div>
+        <button onclick="saveAiContentToProject()" class="w-full bg-zinc-800 hover:bg-zinc-700 border border-ytBorder py-2.5 rounded-lg text-sm font-medium">
+          Save Content to Project
+        </button>
+      </div>
+    </section>
+
+    <!-- 4. RESEARCH -->
+    <section id="tab-research" class="hidden space-y-4">
+      <div class="bg-ytCard border border-ytBorder rounded-xl p-4 space-y-3">
+        <h2 class="text-lg font-semibold">Research & Fact-Checking</h2>
+        <p class="text-xs text-zinc-400">AI dwara banaye gaye inferences ko verified fact na maanein.</p>
+        <div>
+          <label class="block text-xs text-zinc-400 mb-1">Claim / Fact</label>
+          <input type="text" id="recClaim" class="w-full p-2.5 rounded-lg border text-sm" placeholder="Tathya ya claim likhein">
+        </div>
+        <div>
+          <label class="block text-xs text-zinc-400 mb-1">Source URL</label>
+          <input type="text" id="recUrl" class="w-full p-2.5 rounded-lg border text-sm" placeholder="https://...">
+        </div>
+        <div>
+          <label class="block text-xs text-zinc-400 mb-1">Category</label>
+          <select id="recCategory" class="w-full p-2.5 rounded-lg border text-sm">
+            <option value="SUPPORTED_BY_SOURCE">Verified Source</option>
+            <option value="USER_UNVERIFIED">User Claim (Unverified)</option>
+            <option value="AI_UNVERIFIED">AI Generated Claim</option>
+            <option value="CREATIVE_INTERPRETATION">Creative Interpretation</option>
+          </select>
+        </div>
+        <button onclick="addResearchRecord()" class="w-full bg-zinc-800 hover:bg-zinc-700 border border-ytBorder py-2 rounded-lg text-sm font-medium">
+          Add Fact Record
+        </button>
+        <div id="researchList" class="space-y-2 text-xs pt-3 border-t border-ytBorder">
+          Koi fact record nahi hai.
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. MEDIA -->
+    <section id="tab-media" class="hidden space-y-4">
+      <div class="bg-ytCard border border-ytBorder rounded-xl p-4 space-y-4">
+        <h2 class="text-lg font-semibold">Local Media Attachment</h2>
+        <div class="border border-dashed border-ytBorder p-4 rounded-xl text-center space-y-2">
+          <div class="text-2xl">🎬</div>
+          <div class="text-sm font-medium">Select Rendered MP4 Video</div>
+          <input type="file" id="mediaVideoInput" accept="video/mp4" class="block w-full text-xs text-zinc-400">
+          <div id="videoFileInfo" class="text-xs text-zinc-400 font-mono">No video file selected</div>
+        </div>
+        <div class="border border-dashed border-ytBorder p-4 rounded-xl text-center space-y-2">
+          <div class="text-2xl">🖼️</div>
+          <div class="text-sm font-medium">Select Thumbnail Image</div>
+          <input type="file" id="mediaThumbInput" accept="image/*" class="block w-full text-xs text-zinc-400">
+          <div id="thumbFileInfo" class="text-xs text-zinc-400 font-mono">No thumbnail selected</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. APPROVAL GATE -->
+    <section id="tab-approval" class="hidden space-y-4">
+      <div class="bg-ytCard border-2 border-ytRed/50 rounded-xl p-4 space-y-4">
+        <h2 class="text-lg font-bold text-ytRed uppercase">Mandatory Approval Gate</h2>
+        <p class="text-xs text-zinc-300">Security rule: Kisi bhi data me badlav karne par approval ticket turant cancel ho jata hai.</p>
+        <div class="bg-black/40 p-3 rounded-lg border border-ytBorder text-xs space-y-1">
+          <p><span class="text-zinc-400">Title:</span> <span id="apprTitle" class="font-semibold text-white"></span></p>
+          <p><span class="text-zinc-400">Selected MP4:</span> <span id="apprVideo" class="font-mono text-zinc-300"></span></p>
+          <p><span class="text-zinc-400">Privacy:</span> <span class="text-ytRed font-bold">PRIVATE (Mandatory Default)</span></p>
+          <p><span class="text-zinc-400">SHA-256 Hash:</span> <span id="apprHash" class="font-mono text-[10px] text-zinc-500">None</span></p>
+        </div>
+        <div class="space-y-2 text-xs">
+          <label class="flex items-start space-x-2">
+            <input type="checkbox" id="chkWatchVideo" class="mt-0.5 rounded text-ytRed">
+            <span>Maine MP4 video file ko dekh kar facts aur tone verify kar liya hai.</span>
+          </label>
+          <label class="flex items-start space-x-2">
+            <input type="checkbox" id="chkMetadata" class="mt-0.5 rounded text-ytRed">
+            <span>Title, Description aur Tags me koi fake dawa nahi hai.</span>
+          </label>
+          <label class="flex items-start space-x-2">
+            <input type="checkbox" id="chkRights" class="mt-0.5 rounded text-ytRed">
+            <span>Copyright aur visual assets ke rights cleared hain.</span>
+          </label>
+          <label class="flex items-start space-x-2">
+            <input type="checkbox" id="chkAuthorize" class="mt-0.5 rounded text-ytRed">
+            <span>Main PRIVATE mode me YouTube upload authorize karta hoon.</span>
+          </label>
+        </div>
+        <button id="btnSignApproval" onclick="signHumanApproval()" class="w-full bg-zinc-800 border border-ytBorder text-white py-3 rounded-lg font-medium text-xs">
+          Sign & Issue Approval Ticket
+        </button>
+        <button id="btnStartUpload" onclick="startYouTubeUpload()" disabled class="w-full bg-ytRed opacity-40 cursor-not-allowed text-white py-3 rounded-lg font-bold text-sm">
+          Upload to YouTube (Private)
+        </button>
+      </div>
+
+      <div id="uploadProgressBox" class="hidden bg-ytCard border border-ytBorder rounded-xl p-4 space-y-3">
+        <h3 class="text-sm font-semibold">Upload Progress (YouTube API v3)</h3>
+        <div class="w-full bg-zinc-800 rounded-full h-3 overflow-hidden">
+          <div id="uploadProgressBar" class="bg-ytRed h-3 transition-all duration-300 w-0"></div>
+        </div>
+        <div class="flex justify-between text-xs font-mono text-zinc-400">
+          <span id="uploadBytesText">0 / 0 Bytes</span>
+          <span id="uploadPctText">0%</span>
+        </div>
+        <div id="uploadResultMsg" class="text-xs"></div>
+      </div>
+    </section>
+
+    <!-- 7. SETTINGS -->
+    <section id="tab-settings" class="hidden space-y-4">
+      <div class="bg-ytCard border border-ytBorder rounded-xl p-4 space-y-3">
+        <h2 class="text-lg font-semibold">Settings & API Keys</h2>
+        <div>
+          <label class="block text-xs text-zinc-400 mb-1">Google AI Studio (Gemini) API Key</label>
+          <input type="password" id="cfgGeminiKey" class="w-full p-2.5 rounded-lg border text-sm" placeholder="AIzaSy...">
+          <p class="text-[11px] text-zinc-500 mt-1">Free Key: <a href="https://aistudio.google.com/" target="_blank" class="text-ytRed underline">aistudio.google.com</a></p>
+        </div>
+        <div>
+          <label class="block text-xs text-zinc-400 mb-1">Google OAuth Client ID (Web Application)</label>
+          <input type="text" id="cfgOAuthClientId" class="w-full p-2.5 rounded-lg border text-sm" placeholder="xxxxxx.apps.googleusercontent.com">
+        </div>
+        <button onclick="saveSettings()" class="w-full bg-ytRed text-white py-2.5 rounded-lg text-sm font-medium">
+          Save Settings
+        </button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Bottom Nav Bar -->
+  <nav class="bg-ytCard border-t border-ytBorder fixed bottom-0 left-0 right-0 z-50 flex justify-around py-2 text-[10px]">
+    <button onclick="switchTab('dashboard')" class="nav-btn flex flex-col items-center space-y-1 text-ytRed" data-tab="dashboard">
+      <span class="text-lg">📊</span>
+      <span>Dashboard</span>
+    </button>
+    <button onclick="switchTab('ai')" class="nav-btn flex flex-col items-center space-y-1 text-zinc-400" data-tab="ai">
+      <span class="text-lg">⚡</span>
+      <span>AI Studio</span>
+    </button>
+    <button onclick="switchTab('research')" class="nav-btn flex flex-col items-center space-y-1 text-zinc-400" data-tab="research">
+      <span class="text-lg">🔍</span>
+      <span>Research</span>
+    </button>
+    <button onclick="switchTab('media')" class="nav-btn flex flex-col items-center space-y-1 text-zinc-400" data-tab="media">
+      <span class="text-lg">📁</span>
+      <span>Media</span>
+    </button>
+    <button onclick="switchTab('approval')" class="nav-btn flex flex-col items-center space-y-1 text-zinc-400" data-tab="approval">
+      <span class="text-lg">🛡️</span>
+      <span>Approval</span>
+    </button>
+    <button onclick="switchTab('settings')" class="nav-btn flex flex-col items-center space-y-1 text-zinc-400" data-tab="settings">
+      <span class="text-lg">⚙️</span>
+      <span>Settings</span>
+    </button>
+  </nav>
+
+  <!-- Script Engine -->
+  <script>
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
+
+    let db, activeProjectId = null, currentProject = null, selectedVideoFile = null, googleAccessToken = null;
+
+    function initDB() {
+      return new Promise((resolve) => {
+        const req = indexedDB.open('YTAgentDB', 1);
+        req.onupgradeneeded = (e) => {
+          const d = e.target.result;
+          if (!d.objectStoreNames.contains('projects')) d.createObjectStore('projects', { keyPath: 'id', autoIncrement: true });
+          if (!d.objectStoreNames.contains('research')) d.createObjectStore('research', { keyPath: 'id', autoIncrement: true });
+        };
+        req.onsuccess = (e) => { db = e.target.result; resolve(db); };
+      });
+    }
+
+    function switchTab(t) {
+      document.querySelectorAll('main > section').forEach(s => s.classList.add('hidden'));
+      document.getElementById(`tab-${t}`)?.classList.remove('hidden');
+      document.querySelectorAll('.nav-btn').forEach(b => {
+        b.classList.toggle('text-ytRed', b.getAttribute('data-tab') === t);
+        b.classList.toggle('text-zinc-400', b.getAttribute('data-tab') !== t);
+      });
+      if (t === 'approval') refreshApprovalUI();
+      if (t === 'research') loadResearchRecords();
+    }
+
+    function loadProjects() {
+      const tx = db.transaction('projects', 'readonly');
+      tx.objectStore('projects').getAll().onsuccess = (e) => {
+        const list = document.getElementById('projectList');
+        const projects = e.target.result || [];
+        if (!projects.length) { list.innerHTML = '<p class="text-zinc-500">Koi project nahi mila.</p>'; return; }
+        list.innerHTML = '';
+        projects.forEach(p => {
+          const item = document.createElement('div');
+          item.className = 'p-3 bg-zinc-900 border border-ytBorder rounded-lg flex justify-between items-center cursor-pointer';
+          item.innerHTML = `<div><div class="font-semibold text-white">${escapeHtml(p.title)}</div><div class="text-[11px] text-zinc-400">${p.niche} • ${p.language}</div></div><button onclick="selectProject(${p.id}); event.stopPropagation();" class="text-xs bg-ytBorder px-2.5 py-1 rounded text-white">Select</button>`;
+          item.onclick = () => selectProject(p.id);
+          list.appendChild(item);
+        });
+      };
+    }
+
+    function createNewProject() {
+      const p = {
+        title: document.getElementById('newTitle').value.trim() || 'Untitled Project',
+        idea: document.getElementById('newIdea').value.trim(),
+        niche: document.getElementById('newNiche').value,
+        language: document.getElementById('newLang').value,
+        privacyStatus: 'PRIVATE',
+        openingHook: '', script: '', description: '', tags: '',
+        approvalTicket: null, videoFileName: null,
+        createdAt: Date.now()
+      };
+      const tx = db.transaction('projects', 'readwrite');
+      tx.objectStore('projects').add(p).onsuccess = (e) => { selectProject(e.target.result); switchTab('dashboard'); };
+    }
+
+    function selectProject(id) {
+      activeProjectId = id;
+      db.transaction('projects', 'readonly').objectStore('projects').get(id).onsuccess = (e) => {
+        currentProject = e.target.result;
+        document.getElementById('activeProjectBadge').innerText = currentProject.title.slice(0, 15) + '...';
+        document.getElementById('dashProjectTitle').innerText = currentProject.title;
+        document.getElementById('dashLang').innerText = currentProject.language;
+        document.getElementById('dashNiche').innerText = currentProject.niche;
+        document.getElementById('dashProjectDetails').classList.remove('hidden');
+        document.getElementById('aiHook').value = currentProject.openingHook || '';
+        document.getElementById('aiScript').value = currentProject.script || '';
+        document.getElementById('aiDesc').value = currentProject.description || '';
+        document.getElementById('aiTags').value = currentProject.tags || '';
+        updateScriptWordCount();
+      };
+    }
+
+    function updateScriptWordCount() {
+      const text = document.getElementById('aiScript').value.trim();
+      const words = text ? text.split(/\s+/).length : 0;
+      document.getElementById('scriptDurationEstimate').innerText = `${words} words (~${Math.floor(words / 140)}m)`;
+    }
+
+    async function callGemini(promptText) {
+      const k = localStorage.getItem('gemini_api_key');
+      if (!k) { alert('Settings me Gemini API Key daalein'); switchTab('settings'); throw new Error('No key'); }
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${k}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })
+      });
+      const data = await res.json();
+      return data.candidates[0].content.parts[0].text;
+    }
+
+    async function generateHook() {
+      if (!currentProject) return alert('Pehle project select karein');
+      document.getElementById('aiHook').value = await callGemini(`Write 3 viral hooks for ${currentProject.title} in ${currentProject.language}. Return numbered list.`);
+      invalidateApproval();
+    }
+
+    async function generateScript() {
+      if (!currentProject) return alert('Pehle project select karein');
+      document.getElementById('aiScript').value = await callGemini(`Write full structured narration script for ${currentProject.title} in ${currentProject.language}. Format with [HOOK], [BODY], [OUTRO].`);
+      updateScriptWordCount();
+      invalidateApproval();
+    }
+
+    async function generateMetadata() {
+      if (!currentProject) return alert('Pehle project select karein');
+      const out = await callGemini(`Generate SEO Description and comma separated Tags for ${currentProject.title} in ${currentProject.language}. Split using 'TAGS:'.`);
+      const parts = out.split('TAGS:');
+      if (parts[0]) document.getElementById('aiDesc').value = parts[0].trim();
+      if (parts[1]) document.getElementById('aiTags').value = parts[1].trim();
+      invalidateApproval();
+    }
+
+    function saveAiContentToProject() {
+      if (!currentProject) return;
+      currentProject.openingHook = document.getElementById('aiHook').value;
+      currentProject.script = document.getElementById('aiScript').value;
+      currentProject.description = document.getElementById('aiDesc').value;
+      currentProject.tags = document.getElementById('aiTags').value;
+      invalidateApproval();
+      db.transaction('projects', 'readwrite').objectStore('projects').put(currentProject);
+      alert('Content Saved!');
+    }
+
+    function addResearchRecord() {
+      if (!activeProjectId) return alert('Project select karein');
+      const claim = document.getElementById('recClaim').value.trim();
+      if (!claim) return;
+      db.transaction('research', 'readwrite').objectStore('research').add({
+        projectId: activeProjectId, claim,
+        sourceUrl: document.getElementById('recUrl').value.trim(),
+        category: document.getElementById('recCategory').value
+      }).onsuccess = () => {
+        document.getElementById('recClaim').value = '';
+        loadResearchRecords();
+      };
+    }
+
+    function loadResearchRecords() {
+      if (!activeProjectId) return;
+      db.transaction('research', 'readonly').objectStore('research').getAll().onsuccess = (e) => {
+        const records = (e.target.result || []).filter(r => r.projectId === activeProjectId);
+        const container = document.getElementById('researchList');
+        container.innerHTML = records.length ? '' : 'Koi fact nahi mila.';
+        records.forEach(r => {
+          container.innerHTML += `<div class="p-2 bg-zinc-900 border border-ytBorder rounded"><span class="text-[10px] text-zinc-400 font-mono">${r.category}</span><p>${escapeHtml(r.claim)}</p></div>`;
+        });
+      };
+    }
+
+    document.getElementById('mediaVideoInput').addEventListener('change', (e) => {
+      selectedVideoFile = e.target.files[0] || null;
+      if (selectedVideoFile) {
+        document.getElementById('videoFileInfo').innerText = `${selectedVideoFile.name} (${(selectedVideoFile.size/(1024*1024)).toFixed(1)} MB)`;
+        if (currentProject) { currentProject.videoFileName = selectedVideoFile.name; invalidateApproval(); }
+      }
+    });
+
+    async function computeSHA256(str) {
+      const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+      return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2,'0')).join('');
+    }
+
+    function invalidateApproval() {
+      if (currentProject) {
+        currentProject.approvalTicket = null;
+        db.transaction('projects', 'readwrite').objectStore('projects').put(currentProject);
+      }
+      refreshApprovalUI();
+    }
+
+    function refreshApprovalUI() {
+      if (!currentProject) return;
+      document.getElementById('apprTitle').innerText = currentProject.title;
+      document.getElementById('apprVideo').innerText = selectedVideoFile?.name || currentProject.videoFileName || 'None';
+      const valid = currentProject.approvalTicket?.isValid;
+      document.getElementById('apprHash').innerText = valid ? currentProject.approvalTicket.hash : 'Approval Missing/Invalidated';
+      document.getElementById('btnStartUpload').disabled = !valid;
+      document.getElementById('btnStartUpload').classList.toggle('opacity-40', !valid);
+      document.getElementById('btnStartUpload').classList.toggle('cursor-not-allowed', !valid);
+    }
+
+    async function signHumanApproval() {
+      if (!currentProject) return alert('Project select karein');
+      if (!selectedVideoFile && !currentProject.videoFileName) return alert('MP4 File select karein');
+      if (!['chkWatchVideo','chkMetadata','chkRights','chkAuthorize'].every(id => document.getElementById(id).checked)) {
+        return alert('All 4 boxes check karein');
+      }
+      const hash = await computeSHA256(`title=${currentProject.title};video=${selectedVideoFile?.name || currentProject.videoFileName};priv=PRIVATE`);
+      currentProject.approvalTicket = { hash, isValid: true };
+      db.transaction('projects', 'readwrite').objectStore('projects').put(currentProject);
+      alert('Approval Ticket Signed!');
+      refreshApprovalUI();
+    }
+
+    function startYouTubeUpload() {
+      if (!selectedVideoFile) return alert('MP4 File re-select karein');
+      const cid = localStorage.getItem('oauth_client_id');
+      if (!cid) return alert('Settings me OAuth Client ID daalein');
+      google.accounts.oauth2.initTokenClient({
+        client_id: cid,
+        scope: 'https://www.googleapis.com/auth/youtube.upload',
+        callback: (res) => { if (res.access_token) { googleAccessToken = res.access_token; executeUpload(); } }
+      }).requestAccessToken();
+    }
+
+    async function executeUpload() {
+      const pBox = document.getElementById('uploadProgressBox');
+      pBox.classList.remove('hidden');
+      const initRes = await fetch('https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${googleAccessToken}`,
+          'Content-Type': 'application/json',
+          'X-Upload-Content-Type': 'video/mp4',
+          'X-Upload-Content-Length': selectedVideoFile.size.toString()
+        },
+        body: JSON.stringify({
+          snippet: { title: currentProject.title, description: currentProject.description, tags: (currentProject.tags||'').split(',') },
+          status: { privacyStatus: 'private' }
+        })
+      });
+      const loc = initRes.headers.get('Location');
+      const xhr = new XMLHttpRequest();
+      xhr.open('PUT', loc, true);
+      xhr.setRequestHeader('Content-Type', 'video/mp4');
+      xhr.upload.onprogress = (e) => {
+        const pct = Math.round((e.loaded / e.total) * 100);
+        document.getElementById('uploadProgressBar').style.width = `${pct}%`;
+        document.getElementById('uploadPctText').innerText = `${pct}%`;
+      };
+      xhr.onload = () => {
+        const res = JSON.parse(xhr.responseText);
+        document.getElementById('uploadResultMsg').innerHTML = `<span class="text-green-400">Success! Video ID: ${res.id}</span>`;
+      };
+      xhr.send(selectedVideoFile);
+    }
+
+    function saveSettings() {
+      localStorage.setItem('gemini_api_key', document.getElementById('cfgGeminiKey').value.trim());
+      localStorage.setItem('oauth_client_id', document.getElementById('cfgOAuthClientId').value.trim());
+      alert('Settings Saved!');
+    }
+
+    function escapeHtml(t) { const d = document.createElement('div'); d.innerText = t || ''; return d.innerHTML; }
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      await initDB();
+      document.getElementById('cfgGeminiKey').value = localStorage.getItem('gemini_api_key') || '';
+      document.getElementById('cfgOAuthClientId').value = localStorage.getItem('oauth_client_id') || '';
+      loadProjects();
+    });
+  </script>
+</body>
+</html>
