@@ -1,0 +1,15 @@
+{
+  "name": "YouTube AI Agent Pro",
+  "short_name": "YTAgentPro",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0f0f12",
+  "theme_color": "#ff0033",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/1384/1384060.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
